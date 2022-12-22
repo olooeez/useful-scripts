@@ -17,32 +17,6 @@ def show_help(status = 0)
   exit(status)
 end
 
-def github_api_repos_response(username)
-  uri = URI.parse("https://api.github.com/users/#{username}/repos")
-
-  http = Net::HTTP.new(uri.host, uri.port)
-  http.use_ssl = true
-  http.verify_mode = OpenSSL::SSL::VERIFY_NONE
-
-  Net::HTTP::Get.new(uri.request_uri).request(request)
-end
-
-def show_user_repos(response)
-  json_response = JSON.parse(response.body)
-
-  puts "Following are all #{username} user repositories"
-  json_response.each_with_index do |repo, index|
-    puts "#{index + 1} - #{repo['name']}"
-  end
-end
-
-def user_input_repo_selection
-  print 'Enter the numbers of the repositories you want to clone or type "all" to clone all: '
-  repos_indexes = $stdin.gets.chomp.split
-
-  repos_indexes[0] == 'all' ? 'all' : repos_indexes
-end
-
 options = GetoptLong.new(
   ['--help', '-h', GetoptLong::NO_ARGUMENT]
 )
@@ -61,15 +35,30 @@ end
 
 username = ARGV[0]
 
-response = github_api_repos_response(username)
+uri = URI.parse("https://api.github.com/users/#{username}/repos")
+
+http = Net::HTTP.new(uri.host, uri.port)
+http.use_ssl = true
+http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+
+response = http.request(Net::HTTP::Get.new(uri.request_uri))
 
 unless response.code == '200'
   puts "Error: Got a HTTP error code (#{response.code}). Seek help online."
   exit(1)
 end
 
-show_user_repos(response)
-choice = user_input_repo_selection
+json_response = JSON.parse(response.body)
+
+puts "Following are all #{username} user repositories"
+json_response.each_with_index do |repo, index|
+  puts "#{index + 1} - #{repo['name']}"
+end
+
+print 'Enter the numbers of the repositories you want to clone or type "all" to clone all: '
+repos_indexes = $stdin.gets.chomp.split
+
+choice = repos_indexes[0] == 'all' ? 'all' : repos_indexes
 
 if choice == 'all'
   json_response.each do |repo|
