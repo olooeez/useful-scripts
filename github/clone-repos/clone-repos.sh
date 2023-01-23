@@ -33,18 +33,14 @@ get_protocol() {
   fi
 }
 
-set_base_url() {
-  if [ "$protocol" == "http" ]
-  then
-    base_url="https://github.com"
-  else
-    base_url="git@github.com"
-  fi
-}
-
 get_repos() {
-  repos=$(curl -s "https://api.github.com/users/$username/repos?per_page=100" | grep 'clone_url' | awk '{print $2}' | sed 's/"\(.*\)",/\1/')
-
+  if  [ "$protocol" == "http" ]
+  then
+    repos=$(curl -s "https://api.github.com/users/$username/repos?per_page=100" | grep 'clone_url' | awk '{print $2}' | sed 's/"\(.*\)",/\1/')
+  else
+    repos=$(curl -s "https://api.github.com/users/$username/repos?per_page=100" | grep 'ssh_url' | awk '{print $2}' | sed 's/"\(.*\)",/\1/')
+  fi
+  
   if [ $? -ne 0 ]
   then
     printf "${RED}Error:${NC} Failed to get list of repositories from GitHub API.\n"
@@ -58,26 +54,7 @@ get_repos() {
   fi
 }
 
-create_repo_dir() {
-  if [ -d "$repo_dir" ]
-  then
-    read -p "Directory $repo_dir already exists. Enter 'y' to overwrite, or any other key to cancel: " overwrite
-
-    if [ "$overwrite" != "y" ]
-    then
-      printf "${YELLOW}Exiting.${NC}"
-      exit 1
-    fi
-
-    rm -rf "$repo_dir"
-  fi
-
-  mkdir "$repo_dir"
-}
-
 clone_repos() {
-  cd "$repo_dir"
-
   for repo in $repos
   do
     repo_name=$(echo "$repo" | sed 's/.*\///' | sed 's/\.git//')
@@ -97,9 +74,7 @@ main() {
   check_utilities
   get_username
   get_protocol
-  set_base_url
   get_repos
-  create_repo_dir
   clone_repos
   printf "${GREEN}Done!${NC}\n"
 }
